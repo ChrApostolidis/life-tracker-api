@@ -1,0 +1,13 @@
+services:
+  api:
+    build: .
+    restart: always
+    ports:
+      - "8080:8080"
+    volumes:
+      - lifetracker-data:/data
+    env_file:
+      - .env
+
+volumes:
+  lifetracker-data:

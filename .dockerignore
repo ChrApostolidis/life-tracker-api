@@ -1,0 +1,16 @@
+# Build output
+target/
+
+# Local SQLite database — never bake it into the image
+*.db
+*.db-journal
+
+# Git & IDE
+.git/
+.gitignore
+.idea/
+*.iml
+
+# Misc
+HELP.md
+.mvn/wrapper/maven-wrapper.jar
