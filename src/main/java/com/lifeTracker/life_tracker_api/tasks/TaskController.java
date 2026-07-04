@@ -27,6 +27,13 @@ public class TaskController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @GetMapping("/tasks")
+    public ResponseEntity<List<Task>> getTasksInRange(
+            @RequestParam String from,
+            @RequestParam String to) {
+        return ResponseEntity.ok(taskService.getTasksInRange(from, to));
+    }
+
     @GetMapping("/inbox")
     public ResponseEntity<List<Task>> getInbox() {
         return ResponseEntity.ok(taskService.getInbox());
@@ -48,4 +55,15 @@ public class TaskController {
         taskService.restoreTask(id);
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/tasks/{id}/complete")
+    public ResponseEntity<Task> completeTask(@PathVariable String id) {
+        return ResponseEntity.ok(taskService.completeTask(id));
+    }
+
+    @PostMapping("/tasks/{id}/uncomplete")
+    public ResponseEntity<Task> uncompleteTask(@PathVariable String id) {
+        return ResponseEntity.ok(taskService.uncompleteTask(id));
+    }
+
 }
