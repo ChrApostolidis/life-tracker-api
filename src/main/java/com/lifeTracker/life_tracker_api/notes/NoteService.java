@@ -38,6 +38,16 @@ public class NoteService {
         return noteRepository.save(note);
     }
 
+    public Note update(String id, NoteUpdateRequest request) {
+        Note note = getNoteOrThrow(id);
+        if (note.getDeletedAt() != null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Note not found");
+        }
+        note.setBody(request.body());
+        note.setUpdatedAt(Instant.now());
+        return noteRepository.save(note);
+    }
+
     public void delete(String id) {
         Note note = getNoteOrThrow(id);
         note.setDeletedAt(Instant.now());

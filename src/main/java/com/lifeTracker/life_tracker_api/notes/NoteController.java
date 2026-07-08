@@ -28,6 +28,11 @@ public class NoteController {
         return ResponseEntity.ok(noteService.create(request));
     }
 
+    @PatchMapping("/notes/{id}")
+    public ResponseEntity<Note> updateNote(@PathVariable String id, @Valid @RequestBody NoteUpdateRequest request) {
+        return ResponseEntity.ok(noteService.update(id, request));
+    }
+
     @DeleteMapping("/notes/{id}")
     public ResponseEntity<Void> deleteNote(@PathVariable String id) {
         noteService.delete(id);
