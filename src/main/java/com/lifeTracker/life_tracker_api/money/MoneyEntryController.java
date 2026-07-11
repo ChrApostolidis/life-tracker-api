@@ -8,7 +8,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api")
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(origins = {"http://localhost:3000", "https://lifetracker.christosapostolidis.com"})
 public class MoneyEntryController {
 
     private final MoneyEntryService moneyEntryService;
