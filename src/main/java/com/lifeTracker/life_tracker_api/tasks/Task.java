@@ -31,6 +31,11 @@ public class Task {
 
     private Instant updatedAt;
 
+    // Set only on expanded occurrences of a recurring template (never persisted —
+    // the template row itself always serializes this as null). 'YYYY-MM-DD' local.
+    @Transient
+    private String occurrenceDate;
+
     // getters and setters
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
@@ -70,4 +75,7 @@ public class Task {
 
     public Instant getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
+
+    public String getOccurrenceDate() { return occurrenceDate; }
+    public void setOccurrenceDate(String occurrenceDate) { this.occurrenceDate = occurrenceDate; }
 }

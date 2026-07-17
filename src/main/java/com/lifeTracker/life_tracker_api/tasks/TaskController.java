@@ -39,6 +39,13 @@ public class TaskController {
         return ResponseEntity.ok(taskService.getInbox());
     }
 
+    // Registered before "/tasks/{id}" in source for readability; Spring resolves
+    // the literal segment over the path variable regardless of declaration order.
+    @GetMapping("/tasks/overdue")
+    public ResponseEntity<List<Task>> getOverdueTasks() {
+        return ResponseEntity.ok(taskService.getOverdueTasks());
+    }
+
     @PatchMapping("/tasks/{id}")
     public ResponseEntity<Task> updateTask(@PathVariable String id, @RequestBody Task updates) {
         return ResponseEntity.ok(taskService.updateTask(id, updates));
@@ -64,6 +71,16 @@ public class TaskController {
     @PostMapping("/tasks/{id}/uncomplete")
     public ResponseEntity<Task> uncompleteTask(@PathVariable String id) {
         return ResponseEntity.ok(taskService.uncompleteTask(id));
+    }
+
+    @PostMapping("/tasks/{id}/occurrences/{date}/complete")
+    public ResponseEntity<Task> completeOccurrence(@PathVariable String id, @PathVariable String date) {
+        return ResponseEntity.ok(taskService.completeOccurrence(id, date));
+    }
+
+    @PostMapping("/tasks/{id}/occurrences/{date}/uncomplete")
+    public ResponseEntity<Task> uncompleteOccurrence(@PathVariable String id, @PathVariable String date) {
+        return ResponseEntity.ok(taskService.uncompleteOccurrence(id, date));
     }
 
 }
