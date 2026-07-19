@@ -19,7 +19,10 @@ public class NoteController {
     }
 
     @GetMapping("/notes")
-    public ResponseEntity<List<Note>> listNotes() {
+    public ResponseEntity<List<Note>> listNotes(@RequestParam(required = false) String bookId) {
+        if (bookId != null) {
+            return ResponseEntity.ok(noteService.listByBookId(bookId));
+        }
         return ResponseEntity.ok(noteService.listStandalone());
     }
 

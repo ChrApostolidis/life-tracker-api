@@ -22,9 +22,14 @@ public class NoteService {
         this.taskService = taskService;
     }
 
-    // Standalone notes only (task_id IS NULL), newest first.
+    // Standalone notes only (task_id and book_id both NULL), newest first.
     public List<Note> listStandalone() {
-        return noteRepository.findByTaskIdIsNullAndDeletedAtIsNullOrderByCreatedAtDesc();
+        return noteRepository.findByTaskIdIsNullAndBookIdIsNullAndDeletedAtIsNullOrderByCreatedAtDesc();
+    }
+
+    // One book's thought stream, newest first.
+    public List<Note> listByBookId(String bookId) {
+        return noteRepository.findByBookIdAndDeletedAtIsNullOrderByCreatedAtDesc(bookId);
     }
 
     public Note create(NoteCreateRequest request) {
@@ -33,6 +38,7 @@ public class NoteService {
         note.setBody(request.body());
         note.setSource(request.source() != null ? request.source() : "text");
         note.setRawTranscript(request.rawTranscript());
+        note.setBookId(request.bookId());
         note.setCreatedAt(Instant.now());
         note.setUpdatedAt(Instant.now());
         return noteRepository.save(note);

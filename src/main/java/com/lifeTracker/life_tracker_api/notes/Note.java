@@ -13,6 +13,10 @@ public class Note {
     // NULL = standalone note (notes library); non-null = attached to a task.
     private String taskId;
 
+    // NULL = not a book thought; non-null = one entry in a book's thought stream.
+    // Mutually exclusive with taskId in practice, though nothing enforces that.
+    private String bookId;
+
     @Column(nullable = false)
     private String body;
 
@@ -33,6 +37,9 @@ public class Note {
 
     public String getTaskId() { return taskId; }
     public void setTaskId(String taskId) { this.taskId = taskId; }
+
+    public String getBookId() { return bookId; }
+    public void setBookId(String bookId) { this.bookId = bookId; }
 
     public String getBody() { return body; }
     public void setBody(String body) { this.body = body; }

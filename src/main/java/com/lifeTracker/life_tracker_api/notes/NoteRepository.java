@@ -8,5 +8,7 @@ import java.util.List;
 @Repository
 public interface NoteRepository extends JpaRepository<Note, String> {
 
-    List<Note> findByTaskIdIsNullAndDeletedAtIsNullOrderByCreatedAtDesc();
+    List<Note> findByTaskIdIsNullAndBookIdIsNullAndDeletedAtIsNullOrderByCreatedAtDesc();
+
+    List<Note> findByBookIdAndDeletedAtIsNullOrderByCreatedAtDesc(String bookId);
 }
