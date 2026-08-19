@@ -1,6 +1,7 @@
 package com.lifeTracker.life_tracker_api.notes;
 
 import com.lifeTracker.life_tracker_api.tasks.Task;
+import com.lifeTracker.life_tracker_api.tasks.TaskCreateRequest;
 import com.lifeTracker.life_tracker_api.tasks.TaskService;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -77,11 +78,8 @@ public class NoteService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Note not found");
         }
 
-        Task task = new Task();
-        task.setTitle(note.getBody());
-        task.setSource(note.getSource());
-        task.setRawTranscript(note.getRawTranscript());
-        Task created = taskService.createTask(task);
+        Task created = taskService.createTask(new TaskCreateRequest(
+                note.getBody(), null, null, null, null, null, note.getSource(), note.getRawTranscript()));
 
         note.setDeletedAt(Instant.now());
         note.setUpdatedAt(Instant.now());

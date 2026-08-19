@@ -1,5 +1,6 @@
 package com.lifeTracker.life_tracker_api.tasks;
 
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
@@ -16,8 +17,8 @@ public class TaskController {
     }
 
     @PostMapping("/tasks")
-    public ResponseEntity<Task> createTask(@RequestBody Task task) {
-        return ResponseEntity.ok(taskService.createTask(task));
+    public ResponseEntity<Task> createTask(@Valid @RequestBody TaskCreateRequest request) {
+        return ResponseEntity.ok(taskService.createTask(request));
     }
 
     @GetMapping("/tasks/{id}")
@@ -47,8 +48,14 @@ public class TaskController {
     }
 
     @PatchMapping("/tasks/{id}")
-    public ResponseEntity<Task> updateTask(@PathVariable String id, @RequestBody Task updates) {
+    public ResponseEntity<Task> updateTask(@PathVariable String id, @Valid @RequestBody TaskPatchRequest updates) {
         return ResponseEntity.ok(taskService.updateTask(id, updates));
+    }
+
+    // Clearing a field needs its own verb — PATCH treats null as "unchanged".
+    @PostMapping("/tasks/{id}/unschedule")
+    public ResponseEntity<Task> unscheduleTask(@PathVariable String id) {
+        return ResponseEntity.ok(taskService.unscheduleTask(id));
     }
 
     @DeleteMapping("/tasks/{id}")

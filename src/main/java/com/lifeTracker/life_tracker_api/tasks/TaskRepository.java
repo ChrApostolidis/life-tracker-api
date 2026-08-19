@@ -11,7 +11,8 @@ import java.util.List;
 @Repository
 public interface TaskRepository extends JpaRepository<Task, String> {
 
-    List<Task> findByScheduledAtIsNullAndDeletedAtIsNull();
+    // Newest first — the inbox shows relative timestamps, so DB order read as random.
+    List<Task> findByScheduledAtIsNullAndDeletedAtIsNullOrderByCreatedAtDesc();
 
     // Recurring templates are excluded — they're expanded into occurrences
     // separately in TaskService, never returned as raw rows.

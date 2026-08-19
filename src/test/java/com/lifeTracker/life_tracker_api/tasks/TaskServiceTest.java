@@ -12,6 +12,7 @@ import java.time.ZonedDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -28,11 +29,12 @@ class TaskServiceTest {
     private TaskService taskService;
 
     private Task recurringTemplate(String title, String recurrence, ZonedDateTime start) {
-        Task t = new Task();
-        t.setTitle(title);
-        t.setScheduledAt(start.toInstant());
-        t.setRecurrence(recurrence);
-        return taskService.createTask(t);
+        return taskService.createTask(new TaskCreateRequest(
+                title, start.toInstant(), null, recurrence, null, null, null, null));
+    }
+
+    private Task scheduledTask(String title, Instant when) {
+        return taskService.createTask(new TaskCreateRequest(title, when, null, null, null, null, null, null));
     }
 
     private String iso(ZonedDateTime z) {
@@ -59,8 +61,7 @@ class TaskServiceTest {
         // Start on a Monday, target Wednesday (JS dow 3).
         ZonedDateTime start = ZonedDateTime.of(2026, 6, 1, 9, 0, 0, 0, ATHENS); // Monday
         Task task = recurringTemplate("Gym", "weekly", start);
-        task.setRecurrenceDay(3); // Wednesday
-        taskService.updateTask(task.getId(), task);
+        taskService.updateTask(task.getId(), new TaskPatchRequest(null, null, null, null, 3, null)); // Wednesday
 
         ZonedDateTime from = ZonedDateTime.of(2026, 6, 1, 0, 0, 0, 0, ATHENS);
         ZonedDateTime to = ZonedDateTime.of(2026, 6, 22, 0, 0, 0, 0, ATHENS);
@@ -146,11 +147,8 @@ class TaskServiceTest {
 
     @Test
     void creatingRecurringTaskWithoutScheduledAtFails() {
-        Task t = new Task();
-        t.setTitle("No date");
-        t.setRecurrence("daily");
-
-        assertThrows(ResponseStatusException.class, () -> taskService.createTask(t));
+        assertThrows(ResponseStatusException.class, () -> taskService.createTask(
+                new TaskCreateRequest("No date", null, null, "daily", null, null, null, null)));
     }
 
     @Test
@@ -158,21 +156,12 @@ class TaskServiceTest {
         Instant yesterday = ZonedDateTime.now(ATHENS).minusDays(1).toInstant();
         Instant tomorrow = ZonedDateTime.now(ATHENS).plusDays(1).toInstant();
 
-        Task overdueOpen = new Task();
-        overdueOpen.setTitle("Overdue open");
-        overdueOpen.setScheduledAt(yesterday);
-        taskService.createTask(overdueOpen);
+        scheduledTask("Overdue open", yesterday);
 
-        Task overdueDone = new Task();
-        overdueDone.setTitle("Overdue but done");
-        overdueDone.setScheduledAt(yesterday);
-        overdueDone = taskService.createTask(overdueDone);
+        Task overdueDone = scheduledTask("Overdue but done", yesterday);
         taskService.completeTask(overdueDone.getId());
 
-        Task future = new Task();
-        future.setTitle("Future");
-        future.setScheduledAt(tomorrow);
-        taskService.createTask(future);
+        scheduledTask("Future", tomorrow);
 
         recurringTemplate("Missed recurring", "daily", ZonedDateTime.now(ATHENS).minusDays(5));
 
@@ -182,5 +171,54 @@ class TaskServiceTest {
         assertTrue(overdue.stream().noneMatch(t -> t.getTitle().equals("Overdue but done")));
         assertTrue(overdue.stream().noneMatch(t -> t.getTitle().equals("Future")));
         assertTrue(overdue.stream().noneMatch(t -> t.getTitle().equals("Missed recurring")));
+    }
+
+    @Test
+    void softDeletedTaskIsInvisibleAndImmutable() {
+        Task task = scheduledTask("Gone", Instant.now());
+        taskService.deleteTask(task.getId());
+
+        assertTrue(taskService.getTaskById(task.getId()).isEmpty());
+        assertThrows(ResponseStatusException.class, () -> taskService.updateTask(
+                task.getId(), new TaskPatchRequest("New title", null, null, null, null, null)));
+        assertThrows(ResponseStatusException.class, () -> taskService.completeTask(task.getId()));
+        assertThrows(ResponseStatusException.class, () -> taskService.unscheduleTask(task.getId()));
+
+        // Restore is the one verb that still reaches a deleted row.
+        taskService.restoreTask(task.getId());
+        assertTrue(taskService.getTaskById(task.getId()).isPresent());
+    }
+
+    @Test
+    void unscheduleClearsDateAndRecurrence() {
+        Task template = recurringTemplate("Standup", "daily", ZonedDateTime.now(ATHENS));
+
+        Task unscheduled = taskService.unscheduleTask(template.getId());
+
+        assertNull(unscheduled.getScheduledAt());
+        assertNull(unscheduled.getRecurrence());
+        assertNull(unscheduled.getRecurrenceDay());
+        assertNull(unscheduled.getRecurrenceUntil());
+        assertTrue(taskService.getInbox().stream().anyMatch(t -> t.getId().equals(template.getId())));
+    }
+
+    @Test
+    void patchingBlankTitleIsRejected() {
+        Task task = scheduledTask("Real title", Instant.now());
+        assertThrows(ResponseStatusException.class, () -> taskService.updateTask(
+                task.getId(), new TaskPatchRequest("   ", null, null, null, null, null)));
+    }
+
+    @Test
+    void createIgnoresClientSuppliedCompletionAndKeepsDefaultSource() {
+        // The DTO has no completedAt/deletedAt/id fields at all, so a client
+        // simply cannot set them — this pins that contract.
+        Task task = taskService.createTask(
+                new TaskCreateRequest("Fresh", null, null, null, null, null, null, null));
+
+        assertNull(task.getCompletedAt());
+        assertNull(task.getDeletedAt());
+        assertEquals("text", task.getSource());
+        assertNotNull(task.getId());
     }
 }

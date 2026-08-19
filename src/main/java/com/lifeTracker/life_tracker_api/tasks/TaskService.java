@@ -41,40 +41,70 @@ public class TaskService {
         this.zone = ZoneId.of(timezoneId);
     }
 
-    public Task createTask(Task task) {
-        if (task.getRecurrence() != null && task.getScheduledAt() == null) {
+    public Task createTask(TaskCreateRequest request) {
+        if (request.recurrence() != null && request.scheduledAt() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Recurring tasks must have a scheduledAt");
         }
+        Task task = new Task();
         task.setId(UUID.randomUUID().toString());
+        task.setTitle(request.title());
+        task.setScheduledAt(request.scheduledAt());
+        task.setDurationMin(request.durationMin());
+        task.setRecurrence(request.recurrence());
+        task.setRecurrenceDay(request.recurrenceDay());
+        task.setRecurrenceUntil(request.recurrenceUntil());
+        // Absent source keeps the entity default ('text') rather than nulling
+        // a non-nullable column.
+        if (request.source() != null) task.setSource(request.source());
+        task.setRawTranscript(request.rawTranscript());
         task.setCreatedAt(Instant.now());
         task.setUpdatedAt(Instant.now());
         return taskRepository.save(task);
     }
 
     public Optional<Task> getTaskById(String id) {
-        return taskRepository.findById(id);
+        return taskRepository.findById(id).filter(task -> task.getDeletedAt() == null);
     }
 
     public List<Task> getInbox() {
-        return taskRepository.findByScheduledAtIsNullAndDeletedAtIsNull();
+        return taskRepository.findByScheduledAtIsNullAndDeletedAtIsNullOrderByCreatedAtDesc();
     }
 
-    public Task updateTask(String id, Task updates) {
-        Task task = getTaskOrThrow(id);
+    public Task updateTask(String id, TaskPatchRequest updates) {
+        Task task = getLiveTaskOrThrow(id);
 
-        if (updates.getTitle() != null) task.setTitle(updates.getTitle());
-        if (updates.getScheduledAt() != null) task.setScheduledAt(updates.getScheduledAt());
-        if (updates.getDurationMin() != null) task.setDurationMin(updates.getDurationMin());
-        if (updates.getRecurrence() != null) task.setRecurrence(updates.getRecurrence());
-        if (updates.getRecurrenceDay() != null) task.setRecurrenceDay(updates.getRecurrenceDay());
-        if (updates.getRecurrenceUntil() != null) task.setRecurrenceUntil(updates.getRecurrenceUntil());
+        if (updates.title() != null) {
+            if (updates.title().isBlank()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "title must not be blank");
+            }
+            task.setTitle(updates.title());
+        }
+        if (updates.scheduledAt() != null) task.setScheduledAt(updates.scheduledAt());
+        if (updates.durationMin() != null) task.setDurationMin(updates.durationMin());
+        if (updates.recurrence() != null) task.setRecurrence(updates.recurrence());
+        if (updates.recurrenceDay() != null) task.setRecurrenceDay(updates.recurrenceDay());
+        if (updates.recurrenceUntil() != null) task.setRecurrenceUntil(updates.recurrenceUntil());
 
         task.setUpdatedAt(Instant.now());
         return taskRepository.save(task);
     }
 
+    // The only way to clear a field, since PATCH reads null as "leave unchanged".
+    // Clearing scheduledAt also clears the recurrence: a series with no start
+    // instant has nothing to expand from, so leaving it would strand a template
+    // that produces no occurrences.
+    public Task unscheduleTask(String id) {
+        Task task = getLiveTaskOrThrow(id);
+        task.setScheduledAt(null);
+        task.setRecurrence(null);
+        task.setRecurrenceDay(null);
+        task.setRecurrenceUntil(null);
+        task.setUpdatedAt(Instant.now());
+        return taskRepository.save(task);
+    }
+
     public void deleteTask(String id) {
-        Task task = getTaskOrThrow(id);
+        Task task = getLiveTaskOrThrow(id);
         task.setDeletedAt(Instant.now());
         task.setUpdatedAt(Instant.now());
         taskRepository.save(task);
@@ -88,14 +118,14 @@ public class TaskService {
     }
 
     public Task completeTask(String id) {
-        Task task = getTaskOrThrow(id);
+        Task task = getLiveTaskOrThrow(id);
         task.setCompletedAt(Instant.now());
         task.setUpdatedAt(Instant.now());
         return taskRepository.save(task);
     }
 
     public Task uncompleteTask(String id) {
-        Task task = getTaskOrThrow(id);
+        Task task = getLiveTaskOrThrow(id);
         task.setCompletedAt(null);
         task.setUpdatedAt(Instant.now());
         return taskRepository.save(task);
@@ -296,17 +326,28 @@ public class TaskService {
     }
 
     private Task getRecurringTemplateOrThrow(String id) {
-        Task task = getTaskOrThrow(id);
+        Task task = getLiveTaskOrThrow(id);
         if (task.getRecurrence() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Task is not recurring");
         }
         return task;
     }
 
-    // Find a task or fail with 404 (Spring turns ResponseStatusException into the right HTTP status).
+    // Find a task including soft-deleted ones. Only /restore should use this —
+    // everything else wants getLiveTaskOrThrow.
     private Task getTaskOrThrow(String id) {
         return taskRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found"));
+    }
+
+    // A soft-deleted task is gone as far as the API is concerned: mutating one
+    // used to succeed silently, resurrecting rows nothing could see.
+    private Task getLiveTaskOrThrow(String id) {
+        Task task = getTaskOrThrow(id);
+        if (task.getDeletedAt() != null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found");
+        }
+        return task;
     }
 
     // Parse an ISO-8601 timestamp (e.g. 2026-06-21T00:00:00Z) into an Instant,
