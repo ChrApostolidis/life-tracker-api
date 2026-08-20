@@ -1,6 +1,6 @@
 # Life Tracker API
 
-The REST backend for [Life Tracker](../life-tracker) — a single-user, capture-first life-tracking app (tasks, notes, money, books, habits, plus a small RPG layer on top). This repo is the persistence and business-logic layer; there's no UI here.
+The REST backend for [Life Tracker](../life-tracker)  a single-user, capture-first life-tracking app (tasks, notes, money, books, habits, plus a small RPG layer on top). This repo is the persistence and business-logic layer; there's no UI here.
 
 ---
 
@@ -11,10 +11,8 @@ The REST backend for [Life Tracker](../life-tracker) — a single-user, capture-
 - [Data model](#data-model)
 - [API contract (summary)](#api-contract-summary)
 - [Getting started](#getting-started)
-- [Demos](#demos)
 - [Deployment](#deployment)
-- [Status](#status)
-
+- 
 ---
 
 ## Why this exists
