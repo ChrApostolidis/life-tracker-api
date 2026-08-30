@@ -45,6 +45,11 @@ public class JournalEntryService {
         // No entryDate means "today" — resolved here so the server's clock and
         // configured timezone decide, not the caller's.
         entry.setEntryDate(request.entryDate() != null ? request.entryDate() : today());
+        // Absent source keeps the entity default ('text') rather than nulling a
+        // non-nullable column. source/rawTranscript are capture facts and are
+        // deliberately not editable afterwards — same rule as Task.
+        if (request.source() != null) entry.setSource(request.source());
+        entry.setRawTranscript(blankToNull(request.rawTranscript()));
         entry.setCreatedAt(Instant.now());
         entry.setUpdatedAt(Instant.now());
         return journalEntryRepository.save(entry);

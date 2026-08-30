@@ -24,7 +24,7 @@ class JournalEntryServiceTest {
     private JournalEntryService journalEntryService;
 
     private JournalEntry create(String title, String body, String tags, String date) {
-        return journalEntryService.create(new JournalEntryCreateRequest(title, body, tags, date));
+        return journalEntryService.create(new JournalEntryCreateRequest(title, body, tags, date, null, null));
     }
 
     @Test
@@ -94,5 +94,17 @@ class JournalEntryServiceTest {
     @Test
     void malformedRangeDatesAreRejected() {
         assertThrows(ResponseStatusException.class, () -> journalEntryService.list("not-a-date", "2026-09-01"));
+    }
+
+    @Test
+    void captureSourceDefaultsToTextAndVoiceKeepsItsTranscript() {
+        JournalEntry typed = create(null, "Typed by hand", null, "2026-08-28");
+        assertEquals("text", typed.getSource());
+        assertNull(typed.getRawTranscript());
+
+        JournalEntry spoken = journalEntryService.create(new JournalEntryCreateRequest(
+                null, "Edited text", null, "2026-08-28", "voice", "the original dictation"));
+        assertEquals("voice", spoken.getSource());
+        assertEquals("the original dictation", spoken.getRawTranscript());
     }
 }

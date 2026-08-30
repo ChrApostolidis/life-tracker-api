@@ -28,6 +28,15 @@ public class JournalEntry {
     @Column(nullable = false)
     private String entryDate;
 
+    // 'text' | 'voice' — how this entry was captured, same as Task and Note.
+    @Column(nullable = false)
+    private String source = "text";
+
+    // The original speech-to-text output, kept after edits. Transcript only:
+    // no audio is ever uploaded or stored.
+    @Column(columnDefinition = "text")
+    private String rawTranscript;
+
     private Instant deletedAt;
 
     @Column(nullable = false, updatable = false)
@@ -50,6 +59,12 @@ public class JournalEntry {
 
     public String getEntryDate() { return entryDate; }
     public void setEntryDate(String entryDate) { this.entryDate = entryDate; }
+
+    public String getSource() { return source; }
+    public void setSource(String source) { this.source = source; }
+
+    public String getRawTranscript() { return rawTranscript; }
+    public void setRawTranscript(String rawTranscript) { this.rawTranscript = rawTranscript; }
 
     public Instant getDeletedAt() { return deletedAt; }
     public void setDeletedAt(Instant deletedAt) { this.deletedAt = deletedAt; }
