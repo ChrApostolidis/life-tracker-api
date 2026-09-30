@@ -8,7 +8,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api")
-@CrossOrigin(origins = {"http://localhost:3000", "https://lifetracker.christosapostolidis.com"})
 public class HabitController {
 
     private final HabitService habitService;

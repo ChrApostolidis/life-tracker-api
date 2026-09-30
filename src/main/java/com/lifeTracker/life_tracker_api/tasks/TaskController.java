@@ -7,7 +7,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api")
-@CrossOrigin(origins = {"http://localhost:3000", "https://lifetracker.christosapostolidis.com"})
 public class TaskController {
 
     private final TaskService taskService;
