@@ -23,6 +23,12 @@ public class CorsConfig implements WebMvcConfigurer {
                 .allowedOrigins(allowedOrigins)
                 // The registry defaults to GET/HEAD/POST; @CrossOrigin allowed every
                 // mapped verb, so PATCH and DELETE must be listed explicitly.
-                .allowedMethods("GET", "HEAD", "POST", "PATCH", "DELETE");
+                .allowedMethods("GET", "HEAD", "POST", "PATCH", "DELETE")
+                // Lets the web app send its session cookie. Only allowed because
+                // the origins are listed explicitly, never "*".
+                .allowCredentials(true)
+                // Browsers hide non-standard response headers from cross-origin
+                // scripts; the login page reads this one to say how long a lockout lasts.
+                .exposedHeaders("Retry-After");
     }
 }
