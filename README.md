@@ -44,7 +44,7 @@ The API contract deliberately mirrors the frontend's data model field-for-field 
 
 ## Data model
 
-Seven feature domains, each its own package (`tasks/`, `notes/`, `money/`, `books/`, `habits/`, `dayNotes/`, `watchItems/`) with the same internal shape: `Entity`, `CreateRequest`/`UpdateRequest` DTOs, `Repository`, `Service` (owns business rules + soft delete), thin `Controller`.
+Nine feature domains, each its own package (`tasks/`, `notes/`, `money/`, `books/`, `habits/`, `dayNotes/`, `journalEntries/`, `watchItems/`, `workouts/`) with the same internal shape: `Entity`, `CreateRequest`/`UpdateRequest` DTOs, `Repository`, `Service` (owns business rules + soft delete), thin `Controller`.
 
 | Domain | What it stores |
 |---|---|
@@ -54,7 +54,9 @@ Seven feature domains, each its own package (`tasks/`, `notes/`, `money/`, `book
 | **Books** | A personal library with a wishlist → owned → reading → finished pipeline; auto-stamps start/finish dates on status change |
 | **Habits** | Binary daily checks. One of two deliberate exceptions to soft-delete-everywhere: unchecking a day **hard-deletes** that check row (a check is a toggle, not a document; see `HabitService` for why) |
 | **Day journal** | One free-form entry per calendar day with an optional 1 to 5 star rating, addressed by date rather than id |
+| **Journal entries** | Long-form writing with an optional title and tags. Deliberately has no one-per-day constraint, which is the only thing separating it from the day journal |
 | **Watchlist** | Movies and series in one table, with per-episode tracking for series; finishing the last episode auto-completes the show |
+| **Workouts** | A gym log: a seeded exercise library, workouts, and the sets logged in them (integer grams). Suggests the next weight per exercise using double progression: a pure, unit-tested rules class, not a model. Rep ranges follow a chosen training style (strength / balanced / hypertrophy, split compound vs isolation) unless pinned per exercise |
 
 Soft delete (`deletedAt` + a `/restore` endpoint) is the rule everywhere except habit checks and episode watches. Both are toggles, and a tombstoned row would collide with their unique index on re-toggle. Full field-by-field contract, including the recurrence-expansion algorithm, is documented in `CLAUDE.md`.
 
@@ -79,4 +81,9 @@ Base `http://localhost:8080`, JSON camelCase, `PATCH` semantics are `null = leav
 /api/watch-items       GET, POST, PATCH/{id}, DELETE/{id}, /{id}/restore
 /api/episode-watches   GET
 /api/watch-items/{id}/episodes/{season}/{episode}   POST (watch), DELETE (unwatch)
+/api/journal-entries   GET (+ ?from&to), POST, PATCH/{id}, DELETE/{id}, /{id}/restore
+/api/gym-settings      GET, PATCH
+/api/exercises         GET, POST, PATCH/{id}, /{id}/clear-rep-range, /{id}/archive, /{id}/unarchive, /{id}/history, /{id}/suggestion
+/api/workouts          GET (+ ?from&to), GET/{id}, POST, PATCH/{id}, DELETE/{id}, /{id}/restore, /{id}/finish, POST /{id}/sets
+/api/workout-sets      PATCH/{id}, DELETE/{id}, /{id}/restore
 ```
