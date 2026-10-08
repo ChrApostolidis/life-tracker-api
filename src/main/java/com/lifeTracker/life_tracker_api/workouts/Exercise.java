@@ -25,11 +25,21 @@ public class Exercise {
     @Column(nullable = false)
     private String equipment;
 
-    // The double-progression rep range — see Progression.
+    // 'compound' | 'isolation' — picks which half of the training style's ranges applies.
     @Column(nullable = false)
+    private String kind;
+
+    // A pinned rep range, both set or both null. Null = follow the training style.
+    private Integer repMinOverride;
+
+    private Integer repMaxOverride;
+
+    // The rep range in effect, override or style — never persisted. Filled by
+    // ExerciseService on every exercise it hands out; Progression reads these.
+    @Transient
     private Integer repMin;
 
-    @Column(nullable = false)
+    @Transient
     private Integer repMax;
 
     // What "add weight" adds. 0 = bodyweight, which progresses by reps instead.
@@ -55,6 +65,15 @@ public class Exercise {
 
     public String getEquipment() { return equipment; }
     public void setEquipment(String equipment) { this.equipment = equipment; }
+
+    public String getKind() { return kind; }
+    public void setKind(String kind) { this.kind = kind; }
+
+    public Integer getRepMinOverride() { return repMinOverride; }
+    public void setRepMinOverride(Integer repMinOverride) { this.repMinOverride = repMinOverride; }
+
+    public Integer getRepMaxOverride() { return repMaxOverride; }
+    public void setRepMaxOverride(Integer repMaxOverride) { this.repMaxOverride = repMaxOverride; }
 
     public Integer getRepMin() { return repMin; }
     public void setRepMin(Integer repMin) { this.repMin = repMin; }
