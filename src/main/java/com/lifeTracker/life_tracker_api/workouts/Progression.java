@@ -3,14 +3,25 @@ package com.lifeTracker.life_tracker_api.workouts;
 import java.util.List;
 
 /**
- * Double progression: work up the rep range at one weight, and once every set
- * reaches the top of it, add a step and drop back to the bottom. Pure and
+ * Double progression: work up the rep range at one weight, and once the sets
+ * reach the top of it, add a step and drop back to the bottom. Pure and
  * deterministic so it can be tested without Spring — see the web repo's
  * GYM_TRACKER_PLAN.md for the rules table.
  */
 final class Progression {
 
     private static final double DELOAD_FACTOR = 0.9;
+
+    // Reps the top sets may fall short of repMax, in total, and still count as
+    // "reached the top". Without it 12/12/11 would hold the weight another session.
+    private static final int REP_TOLERANCE = 1;
+
+    // Sessions in a row below repMin at the same weight before a deload.
+    private static final int STRIKES_BEFORE_DELOAD = 3;
+
+    // A step bigger than this share of the current weight (6 kg -> 8 kg dumbbells
+    // is 33%) is only taken once the reps earn it — see earnedBigJump.
+    private static final double MAX_PLAIN_JUMP = 0.10;
 
     private Progression() {}
 
@@ -35,11 +46,15 @@ final class Progression {
         if (step == 0) {
             return new ProgressionSuggestion("repeat", weight, lowestReps + 1, top.size(), last);
         }
-        if (lowestReps >= repMax) {
-            return new ProgressionSuggestion("increase", weight + step, repMin, top.size(), last);
+        if (repShortfall(top, repMax) <= REP_TOLERANCE) {
+            if (step <= weight * MAX_PLAIN_JUMP || earnedBigJump(weight, lowestReps, step, repMin)) {
+                return new ProgressionSuggestion("increase", weight + step, repMin, top.size(), last);
+            }
+            // Top of the range, but the next step is too big a leap yet: keep
+            // the weight and go past repMax until the reps carry the jump.
+            return new ProgressionSuggestion("extend", weight, lowestReps + 1, top.size(), last);
         }
-        if (missedRange(last, repMin) && judged.size() > 1
-                && missedRange(judged.get(1), repMin) && workingWeight(judged.get(1)) == weight) {
+        if (missStreakAt(judged, weight, repMin) >= STRIKES_BEFORE_DELOAD) {
             return new ProgressionSuggestion("deload", deloadWeight(weight, step), repMin, top.size(), last);
         }
         int target = Math.min(repMax, Math.max(repMin, lowestReps + 1));
@@ -56,16 +71,34 @@ final class Progression {
         return working.stream().filter(set -> set.getWeightGrams() == heaviest).toList();
     }
 
-    private static int workingWeight(ExerciseSession session) {
-        return topSets(session).get(0).getWeightGrams();
+    // Take a big step only once the estimated max at today's weight covers
+    // doing repMin at the heavier one. Epley runs high past ~10 reps, which
+    // only makes the jump come slightly sooner.
+    private static boolean earnedBigJump(int weight, int reps, int step, int repMin) {
+        return epley(weight, reps) >= epley(weight + step, repMin);
+    }
+
+    private static double epley(int weightGrams, int reps) {
+        return weightGrams * (1 + reps / 30.0);
+    }
+
+    private static int repShortfall(List<WorkoutSet> sets, int repMax) {
+        return sets.stream().mapToInt(set -> Math.max(0, repMax - set.getReps())).sum();
+    }
+
+    // How many sessions in a row, newest first, missed repMin at this weight.
+    private static int missStreakAt(List<ExerciseSession> judged, int weight, int repMin) {
+        int streak = 0;
+        for (ExerciseSession session : judged) {
+            List<WorkoutSet> top = topSets(session);
+            if (top.get(0).getWeightGrams() != weight || lowestReps(top) >= repMin) break;
+            streak++;
+        }
+        return streak;
     }
 
     private static int lowestReps(List<WorkoutSet> sets) {
         return sets.stream().mapToInt(WorkoutSet::getReps).min().orElse(0);
-    }
-
-    private static boolean missedRange(ExerciseSession session, int repMin) {
-        return lowestReps(topSets(session)) < repMin;
     }
 
     // ~90%, rounded DOWN to the step: a deload should never round toward heavier,
