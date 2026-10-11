@@ -11,6 +11,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -61,11 +62,17 @@ public class WorkoutService {
         return new WorkoutDetailResponse(workout, workoutSetRepository.findByWorkoutIdAndDeletedAtIsNullOrderByPositionAsc(id));
     }
 
+    // A client-minted id that already exists means a retry: hand back the row
+    // the first attempt created rather than a duplicate.
     public Workout create(WorkoutCreateRequest request) {
+        if (request.id() != null) {
+            Optional<Workout> existing = workoutRepository.findById(request.id());
+            if (existing.isPresent()) return existing.get();
+        }
         Workout workout = new Workout();
-        workout.setId(UUID.randomUUID().toString());
+        workout.setId(request.id() != null ? request.id() : UUID.randomUUID().toString());
         workout.setPerformedOn(request.performedOn() != null ? request.performedOn() : LocalDate.now(zone).toString());
-        workout.setStartedAt(Instant.now());
+        workout.setStartedAt(request.startedAt() != null ? request.startedAt() : Instant.now());
         workout.setNotes(blankToNull(request.notes()));
         workout.setCreatedAt(Instant.now());
         workout.setUpdatedAt(Instant.now());
@@ -80,11 +87,15 @@ public class WorkoutService {
         return workoutRepository.save(workout);
     }
 
-    // Idempotent: finishing twice keeps the first finish time.
-    public Workout finish(String id) {
+    // Idempotent: finishing twice keeps the first finish time. finishedAt is
+    // when Finish was tapped on an offline client; null = now.
+    public Workout finish(String id, Instant finishedAt) {
         Workout workout = getLiveWorkoutOrThrow(id);
+        if (finishedAt != null && finishedAt.isBefore(workout.getStartedAt())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "finishedAt is before startedAt");
+        }
         if (workout.getFinishedAt() == null) {
-            workout.setFinishedAt(Instant.now());
+            workout.setFinishedAt(finishedAt != null ? finishedAt : Instant.now());
             workout.setUpdatedAt(Instant.now());
             workoutRepository.save(workout);
         }
@@ -107,6 +118,16 @@ public class WorkoutService {
 
     public WorkoutSet addSet(String workoutId, WorkoutSetCreateRequest request) {
         getLiveWorkoutOrThrow(workoutId);
+        // Same retry rule as create(): a known client id returns the first attempt's set.
+        if (request.id() != null) {
+            Optional<WorkoutSet> existing = workoutSetRepository.findById(request.id());
+            if (existing.isPresent()) {
+                if (!existing.get().getWorkoutId().equals(workoutId)) {
+                    throw new ResponseStatusException(HttpStatus.CONFLICT, "Set id belongs to another workout");
+                }
+                return existing.get();
+            }
+        }
         // The exercise comes from the body, not the path, so unknown is bad input.
         if (!exerciseRepository.existsById(request.exerciseId())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown exerciseId");
@@ -116,7 +137,7 @@ public class WorkoutService {
                 .orElse(0);
 
         WorkoutSet set = new WorkoutSet();
-        set.setId(UUID.randomUUID().toString());
+        set.setId(request.id() != null ? request.id() : UUID.randomUUID().toString());
         set.setWorkoutId(workoutId);
         set.setExerciseId(request.exerciseId());
         set.setPosition(nextPosition);

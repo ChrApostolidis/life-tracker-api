@@ -43,9 +43,13 @@ public class WorkoutController {
         return ResponseEntity.ok(workoutService.update(id, request));
     }
 
+    // The body is optional: the web app sends none and the server stamps now.
     @PostMapping("/workouts/{id}/finish")
-    public ResponseEntity<Workout> finishWorkout(@PathVariable String id) {
-        return ResponseEntity.ok(workoutService.finish(id));
+    public ResponseEntity<Workout> finishWorkout(
+            @PathVariable String id,
+            @RequestBody(required = false) WorkoutFinishRequest request
+    ) {
+        return ResponseEntity.ok(workoutService.finish(id, request != null ? request.finishedAt() : null));
     }
 
     @DeleteMapping("/workouts/{id}")
