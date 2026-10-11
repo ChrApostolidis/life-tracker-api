@@ -6,6 +6,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Instant;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -29,11 +30,11 @@ class WorkoutServiceTest {
     private ExerciseService exerciseService;
 
     private Workout workoutOn(String date) {
-        return workoutService.create(new WorkoutCreateRequest(date, null));
+        return workoutService.create(new WorkoutCreateRequest(date, null, null, null));
     }
 
     private WorkoutSet log(Workout workout, int weightGrams, int reps) {
-        return workoutService.addSet(workout.getId(), new WorkoutSetCreateRequest(BENCH, weightGrams, reps, null));
+        return workoutService.addSet(workout.getId(), new WorkoutSetCreateRequest(BENCH, weightGrams, reps, null, null));
     }
 
     @Test
@@ -60,7 +61,7 @@ class WorkoutServiceTest {
         Workout last = workoutOn("2026-10-01");
         log(last, 60000, 12);
         log(last, 60000, 12);
-        workoutService.finish(last.getId());
+        workoutService.finish(last.getId(), null);
 
         // The half-done session in progress would otherwise be judged as "last time".
         Workout current = workoutOn("2026-10-04");
@@ -85,9 +86,9 @@ class WorkoutServiceTest {
     @Test
     void listSummarizesEachWorkoutWithoutWarmups() {
         Workout workout = workoutOn("2026-10-03");
-        workoutService.addSet(workout.getId(), new WorkoutSetCreateRequest(BENCH, 20000, 10, true));
+        workoutService.addSet(workout.getId(), new WorkoutSetCreateRequest(BENCH, 20000, 10, true, null));
         log(workout, 60000, 10);
-        workoutService.addSet(workout.getId(), new WorkoutSetCreateRequest("seed-barbell-row", 50000, 8, null));
+        workoutService.addSet(workout.getId(), new WorkoutSetCreateRequest("seed-barbell-row", 50000, 8, null, null));
         WorkoutSet deleted = log(workout, 60000, 9);
         workoutService.deleteSet(deleted.getId());
 
@@ -102,16 +103,51 @@ class WorkoutServiceTest {
     @Test
     void finishingTwiceKeepsTheFirstFinishTime() {
         Workout workout = workoutOn("2026-10-01");
-        Workout finished = workoutService.finish(workout.getId());
+        Workout finished = workoutService.finish(workout.getId(), null);
         assertNotNull(finished.getFinishedAt());
-        assertEquals(finished.getFinishedAt(), workoutService.finish(workout.getId()).getFinishedAt());
+        assertEquals(finished.getFinishedAt(), workoutService.finish(workout.getId(), null).getFinishedAt());
+    }
+
+    @Test
+    void retriedCreatesWithAClientIdReturnTheFirstRow() {
+        Instant startedAt = Instant.parse("2026-10-05T15:00:00Z");
+        WorkoutCreateRequest request = new WorkoutCreateRequest("2026-10-05", null, "client-workout-1", startedAt);
+        Workout first = workoutService.create(request);
+        Workout retry = workoutService.create(request);
+        assertEquals("client-workout-1", first.getId());
+        assertEquals(startedAt, first.getStartedAt());
+        assertEquals(first.getCreatedAt(), retry.getCreatedAt());
+
+        WorkoutSetCreateRequest set = new WorkoutSetCreateRequest(BENCH, 60000, 10, null, "client-set-1");
+        workoutService.addSet(first.getId(), set);
+        workoutService.addSet(first.getId(), set);
+        assertEquals(1, workoutService.get(first.getId()).sets().size());
+    }
+
+    @Test
+    void aClientSetIdCannotMoveToAnotherWorkout() {
+        Workout one = workoutOn("2026-10-05");
+        Workout two = workoutOn("2026-10-06");
+        WorkoutSetCreateRequest set = new WorkoutSetCreateRequest(BENCH, 60000, 10, null, "client-set-2");
+        workoutService.addSet(one.getId(), set);
+        assertThrows(ResponseStatusException.class, () -> workoutService.addSet(two.getId(), set));
+    }
+
+    @Test
+    void finishKeepsAnOfflineClientsFinishTime() {
+        Instant startedAt = Instant.parse("2026-10-05T15:00:00Z");
+        Workout workout = workoutService.create(new WorkoutCreateRequest("2026-10-05", null, null, startedAt));
+        Instant finishedAt = Instant.parse("2026-10-05T16:10:00Z");
+        assertEquals(finishedAt, workoutService.finish(workout.getId(), finishedAt).getFinishedAt());
+        assertThrows(ResponseStatusException.class, () -> workoutService.finish(
+                workout.getId(), Instant.parse("2026-10-05T14:00:00Z")));
     }
 
     @Test
     void unknownExerciseIsRejected() {
         Workout workout = workoutOn("2026-10-01");
         assertThrows(ResponseStatusException.class, () -> workoutService.addSet(
-                workout.getId(), new WorkoutSetCreateRequest("no-such-exercise", 60000, 10, null)));
+                workout.getId(), new WorkoutSetCreateRequest("no-such-exercise", 60000, 10, null, null)));
     }
 
     @Test
