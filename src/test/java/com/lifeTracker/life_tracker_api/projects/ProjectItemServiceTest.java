@@ -30,7 +30,7 @@ class ProjectItemServiceTest {
     private ProjectItemRepository projectItemRepository;
 
     private String newProject() {
-        return projectService.create(new ProjectCreateRequest("Board", "ongoing", null, null)).getId();
+        return projectService.create(new ProjectCreateRequest("Board", "ongoing", null, null, null)).getId();
     }
 
     private ProjectItem add(String projectId, String title, String stage) {

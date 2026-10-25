@@ -62,6 +62,7 @@ public class ProjectService {
         project.setName(request.name().trim());
         project.setPitch(blankToNull(request.pitch()));
         project.setDescription(textOrNull(request.description()));
+        project.setTags(blankToNull(request.tags()));
         // A project created straight into ongoing/finished gets its date too.
         applyStatus(project, request.status());
         project.setCreatedAt(Instant.now());
@@ -84,6 +85,7 @@ public class ProjectService {
         if (request.repoUrl() != null) project.setRepoUrl(validUrl(request.repoUrl(), "repoUrl"));
         if (request.liveUrl() != null) project.setLiveUrl(validUrl(request.liveUrl(), "liveUrl"));
         if (request.techStack() != null) project.setTechStack(blankToNull(request.techStack()));
+        if (request.tags() != null) project.setTags(blankToNull(request.tags()));
         // After applyStatus, so an explicit date in the same request wins over the auto-stamp.
         if (request.startedOn() != null) project.setStartedOn(request.startedOn());
         if (request.finishedOn() != null) project.setFinishedOn(request.finishedOn());

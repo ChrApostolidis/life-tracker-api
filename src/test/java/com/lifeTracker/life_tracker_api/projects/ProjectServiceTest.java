@@ -43,11 +43,11 @@ class ProjectServiceTest {
     private static final String TODAY = LocalDate.now(ZoneId.of("Europe/Athens")).toString();
 
     private Project create(String status) {
-        return projectService.create(new ProjectCreateRequest("Life Tracker", status, "Track everything", null));
+        return projectService.create(new ProjectCreateRequest("Life Tracker", status, "Track everything", null, null));
     }
 
     private static ProjectPatchRequest patch(String status, String repoUrl, String startedOn) {
-        return new ProjectPatchRequest(null, null, null, status, repoUrl, null, null, startedOn, null);
+        return new ProjectPatchRequest(null, null, null, status, repoUrl, null, null, startedOn, null, null);
     }
 
     private ProjectItem addItem(String projectId, String stage) {
@@ -73,8 +73,8 @@ class ProjectServiceTest {
     @Test
     void createKeepsADictatedDescriptionAsSpokenAndDropsABlankOne() {
         String spoken = "So the idea is\n  a habit heatmap on Home";
-        assertEquals(spoken, projectService.create(new ProjectCreateRequest("Heatmap", "idea", null, spoken)).getDescription());
-        assertNull(projectService.create(new ProjectCreateRequest("Heatmap", "idea", null, "   ")).getDescription());
+        assertEquals(spoken, projectService.create(new ProjectCreateRequest("Heatmap", "idea", null, spoken, null)).getDescription());
+        assertNull(projectService.create(new ProjectCreateRequest("Heatmap", "idea", null, "   ", null)).getDescription());
     }
 
     @Test
@@ -114,14 +114,14 @@ class ProjectServiceTest {
     void blankPatchFieldsClearAndNullLeavesThemAlone() {
         Project project = create("idea");
         projectService.update(project.getId(), new ProjectPatchRequest(
-                null, null, "Notes", null, "https://a.dev", "http://b.dev", "Java, React", null, null));
+                null, null, "Notes", null, "https://a.dev", "http://b.dev", "Java, React", null, null, null));
 
         Project unchanged = projectService.update(project.getId(), patch(null, null, null));
         assertEquals("Track everything", unchanged.getPitch());
         assertEquals("https://a.dev", unchanged.getRepoUrl());
 
         Project cleared = projectService.update(project.getId(), new ProjectPatchRequest(
-                null, "", " ", null, "", "  ", "", null, null));
+                null, "", " ", null, "", "  ", "", null, null, null));
         assertNull(cleared.getPitch());
         assertNull(cleared.getDescription());
         assertNull(cleared.getRepoUrl());
@@ -133,7 +133,18 @@ class ProjectServiceTest {
     void blankNameIs400() {
         Project project = create("idea");
         assertStatus(HttpStatus.BAD_REQUEST, () -> projectService.update(project.getId(),
-                new ProjectPatchRequest(" ", null, null, null, null, null, null, null, null)));
+                new ProjectPatchRequest(" ", null, null, null, null, null, null, null, null, null)));
+    }
+
+    @Test
+    void tagsAreSetOnCreateAndClearedByABlankPatch() {
+        Project project = projectService.create(new ProjectCreateRequest("Tagged", "idea", null, null, " work, weekend "));
+        assertEquals("work, weekend", project.getTags());
+
+        assertEquals("work, weekend", projectService.update(project.getId(), patch(null, null, null)).getTags());
+        Project cleared = projectService.update(project.getId(),
+                new ProjectPatchRequest(null, null, null, null, null, null, null, null, null, ""));
+        assertNull(cleared.getTags());
     }
 
     @Test
