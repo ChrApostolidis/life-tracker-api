@@ -30,6 +30,9 @@ public class Project {
     // Comma-separated names, the same snapshot convention as JournalEntry.tags.
     private String techStack;
 
+    // Free-form labels for sorting the pools ("work", "weekend"), same format as techStack.
+    private String tags;
+
     // Local calendar day 'YYYY-MM-DD', auto-stamped by the service when status
     // moves to ongoing/finished and the field is still empty.
     private String startedOn;
@@ -66,6 +69,9 @@ public class Project {
 
     public String getTechStack() { return techStack; }
     public void setTechStack(String techStack) { this.techStack = techStack; }
+
+    public String getTags() { return tags; }
+    public void setTags(String tags) { this.tags = tags; }
 
     public String getStartedOn() { return startedOn; }
     public void setStartedOn(String startedOn) { this.startedOn = startedOn; }

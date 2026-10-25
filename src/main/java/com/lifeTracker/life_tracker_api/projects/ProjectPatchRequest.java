@@ -15,5 +15,6 @@ public record ProjectPatchRequest(
         @Size(max = 500) String liveUrl,
         @Size(max = 500) String techStack,
         @Pattern(regexp = "\\d{4}-\\d{2}-\\d{2}") String startedOn,
-        @Pattern(regexp = "\\d{4}-\\d{2}-\\d{2}") String finishedOn
+        @Pattern(regexp = "\\d{4}-\\d{2}-\\d{2}") String finishedOn,
+        @Size(max = 500) String tags
 ) {}
