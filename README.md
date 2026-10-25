@@ -44,7 +44,7 @@ The API contract deliberately mirrors the frontend's data model field-for-field 
 
 ## Data model
 
-Nine feature domains, each its own package (`tasks/`, `notes/`, `money/`, `books/`, `habits/`, `dayNotes/`, `journalEntries/`, `watchItems/`, `workouts/`) with the same internal shape: `Entity`, `CreateRequest`/`UpdateRequest` DTOs, `Repository`, `Service` (owns business rules + soft delete), thin `Controller`.
+Ten feature domains, each its own package (`tasks/`, `notes/`, `money/`, `books/`, `habits/`, `dayNotes/`, `journalEntries/`, `watchItems/`, `workouts/`, `sleepLogs/`) with the same internal shape: `Entity`, `CreateRequest`/`UpdateRequest` DTOs, `Repository`, `Service` (owns business rules + soft delete), thin `Controller`.
 
 | Domain | What it stores |
 |---|---|
@@ -54,9 +54,10 @@ Nine feature domains, each its own package (`tasks/`, `notes/`, `money/`, `books
 | **Books** | A personal library with a wishlist → owned → reading → finished pipeline; auto-stamps start/finish dates on status change |
 | **Habits** | Binary daily checks. One of two deliberate exceptions to soft-delete-everywhere: unchecking a day **hard-deletes** that check row (a check is a toggle, not a document; see `HabitService` for why) |
 | **Day journal** | One free-form entry per calendar day with an optional 1 to 5 star rating, addressed by date rather than id |
+| **Sleep** | One night per day, keyed by the morning you woke: bedtime and wake time as instants, hours slept derived. Same upsert-by-date shape as the day journal |
 | **Journal entries** | Long-form writing with an optional title and tags. Deliberately has no one-per-day constraint, which is the only thing separating it from the day journal |
 | **Watchlist** | Movies and series in one table, with per-episode tracking for series; finishing the last episode auto-completes the show |
-| **Workouts** | A gym log: a seeded exercise library, workouts, and the sets logged in them (integer grams). Suggests the next weight per exercise using double progression: a pure, unit-tested rules class, not a model. Rep ranges follow a chosen training style (strength / balanced / hypertrophy, split compound vs isolation) unless pinned per exercise |
+| **Workouts** | A gym log: a seeded exercise library, workouts, and the sets logged in them (integer grams). Suggests the next weight per exercise using double progression: a pure, unit-tested rules class, not a model. Rep ranges follow a chosen training style (strength / balanced / hypertrophy, split compound vs isolation) unless pinned per exercise. Workouts and sets accept a client-minted id, so the mobile app can log offline and sync later without duplicates |
 
 Soft delete (`deletedAt` + a `/restore` endpoint) is the rule everywhere except habit checks and episode watches. Both are toggles, and a tombstoned row would collide with their unique index on re-toggle. Full field-by-field contract, including the recurrence-expansion algorithm, is documented in `CLAUDE.md`.
 
@@ -78,6 +79,7 @@ Base `http://localhost:8080`, JSON camelCase, `PATCH` semantics are `null = leav
 /api/habit-checks      GET ?from&to
 /api/habits/{id}/checks/{date}   POST (check), DELETE (uncheck)
 /api/day-notes         GET ?from&to, GET/{date}, POST/{date}, DELETE/{date}, /{date}/restore
+/api/sleep-logs        GET ?from&to, POST/{date}, DELETE/{date}, /{date}/restore
 /api/watch-items       GET, POST, PATCH/{id}, DELETE/{id}, /{id}/restore
 /api/episode-watches   GET
 /api/watch-items/{id}/episodes/{season}/{episode}   POST (watch), DELETE (unwatch)
