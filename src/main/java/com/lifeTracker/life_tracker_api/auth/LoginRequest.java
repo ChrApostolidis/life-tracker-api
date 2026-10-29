@@ -7,5 +7,5 @@ import jakarta.validation.constraints.Pattern;
 // response body for the others. Absent means web.
 public record LoginRequest(
         @NotBlank String password,
-        @Pattern(regexp = "web|extension|mobile") String client
+        @Pattern(regexp = "web|extension|mobile|mcp") String client
 ) {}

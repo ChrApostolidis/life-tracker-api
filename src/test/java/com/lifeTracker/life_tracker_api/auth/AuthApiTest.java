@@ -133,6 +133,18 @@ class AuthApiTest {
     }
 
     @Test
+    void mcpLoginReturnsABearerTokenAndNoCookie() throws Exception {
+        MvcResult result = mvc.perform(login(PASSWORD, "mcp"))
+                .andExpect(status().isOk())
+                .andExpect(header().doesNotExist("Set-Cookie"))
+                .andExpect(jsonPath("$.token").isNotEmpty())
+                .andReturn();
+        String token = result.getResponse().getContentAsString().replaceAll(".*\"token\":\"([^\"]+)\".*", "$1");
+
+        mvc.perform(get(GUARDED).header("Authorization", "Bearer " + token)).andExpect(status().isOk());
+    }
+
+    @Test
     void wrongPasswordIs401WithNoCookie() throws Exception {
         mvc.perform(login("wrong", "web"))
                 .andExpect(status().isUnauthorized())

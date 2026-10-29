@@ -17,7 +17,7 @@ public class Session {
     @Column(nullable = false, unique = true)
     private String tokenHash;
 
-    // 'web' | 'extension' | 'mobile' — web sessions travel as a cookie, the
+    // 'web' | 'extension' | 'mobile' | 'mcp' — web sessions travel as a cookie, the
     // rest as a Bearer token.
     @Column(nullable = false)
     private String client;
