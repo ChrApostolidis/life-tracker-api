@@ -30,7 +30,11 @@ class ProjectItemServiceTest {
     private ProjectItemRepository projectItemRepository;
 
     private String newProject() {
-        return projectService.create(new ProjectCreateRequest("Board", "ongoing", null, null, null)).getId();
+        return newProjectIn("ongoing");
+    }
+
+    private String newProjectIn(String status) {
+        return projectService.create(new ProjectCreateRequest("Board", status, null, null, null)).getId();
     }
 
     private ProjectItem add(String projectId, String title, String stage) {
@@ -137,6 +141,42 @@ class ProjectItemServiceTest {
         assertEquals(List.of("A", "C", "B"), titlesIn(board, "todo"));
         List<Integer> positions = board.stream().filter(i -> i.getStage().equals("todo")).map(ProjectItem::getPosition).toList();
         assertEquals(List.of(1024, 2048, 3072), positions);
+    }
+
+    @Test
+    void movingACardIntoDoingStartsAnIdea() {
+        String projectId = newProjectIn("idea");
+        ProjectItem item = add(projectId, "A", "todo");
+        assertEquals("idea", projectService.get(projectId).getStatus());
+
+        move(item, "doing", 0);
+        Project project = projectService.get(projectId);
+        assertEquals("ongoing", project.getStatus());
+        assertNotNull(project.getStartedOn());
+    }
+
+    @Test
+    void creatingACardStraightIntoDoingStartsAnIdea() {
+        String projectId = newProjectIn("idea");
+        add(projectId, "A", "doing");
+        assertEquals("ongoing", projectService.get(projectId).getStatus());
+    }
+
+    @Test
+    void otherStagesLeaveAnIdeaAlone() {
+        String projectId = newProjectIn("idea");
+        ProjectItem item = add(projectId, "A", "todo");
+        move(item, "blocked", 0);
+        move(item, "done", 0);
+        assertEquals("idea", projectService.get(projectId).getStatus());
+    }
+
+    @Test
+    void doingNeverReopensAFinishedProject() {
+        String projectId = newProjectIn("finished");
+        ProjectItem item = add(projectId, "A", "done");
+        move(item, "doing", 0);
+        assertEquals("finished", projectService.get(projectId).getStatus());
     }
 
     @Test

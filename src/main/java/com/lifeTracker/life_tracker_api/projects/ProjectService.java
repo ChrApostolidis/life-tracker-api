@@ -119,6 +119,16 @@ public class ProjectService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found"));
     }
 
+    // A card entering Doing means work has begun. Only ideas move, so a finished
+    // project is never reopened by tidying its board.
+    void startIfIdea(String projectId) {
+        Project project = getLiveProjectOrThrow(projectId);
+        if (!"idea".equals(project.getStatus())) return;
+        applyStatus(project, "ongoing");
+        project.setUpdatedAt(Instant.now());
+        projectRepository.save(project);
+    }
+
     // Auto-stamp only when the field is still empty — the Book rule.
     private void applyStatus(Project project, String status) {
         project.setStatus(status);

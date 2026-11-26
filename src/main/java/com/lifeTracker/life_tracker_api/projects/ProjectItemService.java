@@ -52,6 +52,7 @@ public class ProjectItemService {
                 .orElse(POSITION_GAP));
         item.setCreatedAt(now);
         item.setUpdatedAt(now);
+        startProjectIfDoing(projectId, stage);
         return projectItemRepository.save(item);
     }
 
@@ -104,6 +105,7 @@ public class ProjectItemService {
         }
         item.setUpdatedAt(now);
         projectItemRepository.save(item);
+        startProjectIfDoing(item.getProjectId(), request.stage());
         return boardOrder(projectItemRepository.findByProjectIdAndDeletedAtIsNull(item.getProjectId()));
     }
 
@@ -146,6 +148,10 @@ public class ProjectItemService {
         if (isDone && !wasDone) item.setCompletedAt(now);
         if (!isDone) item.setCompletedAt(null);
         item.setStage(stage);
+    }
+
+    private void startProjectIfDoing(String projectId, String stage) {
+        if ("doing".equals(stage)) projectService.startIfIdea(projectId);
     }
 
     // The stage order isn't alphabetical, so the board is sorted here rather than in SQL.
